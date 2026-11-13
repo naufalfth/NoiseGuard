@@ -1,0 +1,951 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="color-scheme" content="light dark" />
+    <link rel="icon" href="data:," />
+    <title>NoiseGuard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&family=IBM+Plex+Mono:wght@500;600;700&display=swap" rel="stylesheet" />
+    <style>
+      button, [role="button"], select, summary, input:not([type="checkbox"], [type="radio"]) { min-height: 2.75rem; }
+      * { box-sizing: border-box; }
+      :root{
+        --bg:#edf1f4; --panel:#ffffff; --panel2:#f2f6f8; --ink:#12222e; --ink2:#54666f;
+        --line:#d3dde2; --accent:#0e7c86; --accent-ink:#ffffff;
+        --green:#15985c; --amber:#c78f00; --orange:#dd5a1c; --red:#d92b2b;
+        --shadow:0 1px 2px rgba(18,34,46,.06), 0 8px 24px rgba(18,34,46,.06);
+      }
+      @media (prefers-color-scheme: dark){
+        :root{
+          --bg:#0a1116; --panel:#111c23; --panel2:#0c161d; --ink:#e7f0f4; --ink2:#93a7b1;
+          --line:#22333d; --accent:#12919e; --accent-ink:#ffffff;
+          --green:#2fbf7d; --amber:#e0aa1e; --orange:#f0732f; --red:#f04444;
+          --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 24px rgba(0,0,0,.35);
+        }
+      }
+      body{
+        margin:0; background:var(--bg); color:var(--ink);
+        font-family:"Archivo", system-ui, -apple-system, sans-serif;
+        -webkit-font-smoothing:antialiased;
+      }
+      .wrap{ max-width:1180px; margin:0 auto; padding:22px 18px 48px; }
+      .mono{ font-family:"IBM Plex Mono", ui-monospace, monospace; }
+
+      header.top{ display:flex; flex-wrap:wrap; align-items:flex-end; justify-content:space-between; gap:12px; margin-bottom:18px; }
+      header.top h1{ font-size:clamp(26px,4.5vw,38px); font-weight:800; letter-spacing:-.02em; margin:0; line-height:1.05; }
+      header.top p{ margin:8px 0 0; color:var(--ink2); font-size:15px; max-width:56ch; line-height:1.5; }
+      .honest{
+        font-family:"IBM Plex Mono", monospace; font-size:11.5px; color:var(--ink2);
+        border:1px solid var(--line); background:var(--panel); border-radius:999px;
+        padding:8px 12px; white-space:nowrap;
+      }
+      @media (max-width:640px){
+        .honest{ white-space:normal; border-radius:12px; line-height:1.5; }
+      }
+
+      .layout{ display:grid; grid-template-columns:1.12fr .88fr; gap:16px; align-items:start; }
+      @media (max-width:920px){ .layout{ grid-template-columns:1fr; } }
+      .col{ display:flex; flex-direction:column; gap:16px; min-width:0; }
+
+      .card{ background:var(--panel); border:1px solid var(--line); border-radius:14px; box-shadow:var(--shadow); padding:20px; }
+      .card h2{ font-size:13px; font-family:"IBM Plex Mono", monospace; font-weight:600; letter-spacing:.12em; text-transform:uppercase; color:var(--ink2); margin:0 0 14px; }
+      .card h2 .right{ float:right; letter-spacing:0; text-transform:none; }
+
+      /* ---- Meter ---- */
+      .gauge-wrap{ position:relative; max-width:520px; margin:0 auto; }
+      .gauge-wrap svg{ display:block; width:100%; height:auto; }
+      .verdict{ display:flex; justify-content:center; margin-top:6px; }
+      .pill{
+        display:inline-flex; align-items:center; gap:9px; font-weight:800; font-size:17px; letter-spacing:.02em;
+        padding:9px 18px; border-radius:999px; border:1.5px solid var(--zc, var(--ink2)); color:var(--zc, var(--ink2));
+        background:color-mix(in srgb, var(--zc, var(--ink2)) 10%, transparent);
+      }
+      .pill .dot{ width:11px; height:11px; border-radius:50%; background:var(--zc, var(--ink2)); }
+      .pill.pulse .dot{ animation:pulse 1s ease-in-out infinite; }
+      @keyframes pulse{ 0%,100%{ transform:scale(1); opacity:1;} 50%{ transform:scale(1.5); opacity:.55;} }
+      @media (prefers-reduced-motion: reduce){ .pill.pulse .dot{ animation:none; } }
+      .advice{ text-align:center; color:var(--ink2); font-size:14.5px; line-height:1.55; max-width:52ch; margin:12px auto 0; min-height:44px; }
+      .simchip{
+        display:none; margin:10px auto 0; width:fit-content; font-family:"IBM Plex Mono", monospace; font-size:11px;
+        letter-spacing:.1em; color:var(--amber); border:1px dashed var(--amber); border-radius:6px; padding:4px 9px;
+      }
+      .simchip.on{ display:block; }
+
+      .controls{ display:flex; flex-wrap:wrap; gap:10px; justify-content:center; margin-top:18px; }
+      .btn{
+        appearance:none; border:1.5px solid var(--line); background:var(--panel2); color:var(--ink);
+        font-family:inherit; font-weight:700; font-size:15px; border-radius:10px; padding:10px 20px; cursor:pointer;
+      }
+      .btn.primary{ background:var(--accent); border-color:var(--accent); color:var(--accent-ink); }
+      .btn.danger{ border-color:var(--red); color:var(--red); background:transparent; }
+      .btn:active{ transform:translateY(1px); }
+      .btn:disabled{ opacity:.45; cursor:default; }
+      .status{ text-align:center; font-family:"IBM Plex Mono", monospace; font-size:12px; color:var(--ink2); margin-top:12px; min-height:16px; }
+      .alert{
+        display:none; margin-top:14px; border:1px solid var(--red); color:var(--red); background:color-mix(in srgb, var(--red) 7%, transparent);
+        border-radius:10px; padding:12px 14px; font-size:14px; line-height:1.5;
+      }
+      .alert.on{ display:block; }
+
+      .demo{ margin-top:20px; border-top:1px solid var(--line); padding-top:16px; }
+      .demo .lbl{ font-family:"IBM Plex Mono", monospace; font-size:11.5px; letter-spacing:.1em; text-transform:uppercase; color:var(--ink2); margin-bottom:10px; }
+      .chips{ display:flex; flex-wrap:wrap; gap:8px; }
+      .chip{
+        appearance:none; border:1px solid var(--line); background:var(--panel); color:var(--ink);
+        font-family:inherit; font-size:13.5px; font-weight:600; border-radius:999px; padding:8px 14px; cursor:pointer; min-height:2.75rem;
+      }
+      .chip.active{ border-color:var(--amber); color:var(--amber); background:color-mix(in srgb, var(--amber) 9%, transparent); }
+
+      details.cal{ margin-top:18px; border-top:1px solid var(--line); padding-top:6px; }
+      details.cal summary{ cursor:pointer; font-weight:700; font-size:14px; padding:10px 0 4px; display:flex; align-items:center; }
+      details.cal p{ color:var(--ink2); font-size:13.5px; line-height:1.55; margin:8px 0; }
+      .calrow{ display:flex; align-items:center; gap:12px; margin-top:8px; }
+      .calrow input[type=range]{ flex:1; accent-color:var(--accent); }
+      .calrow .val{ font-family:"IBM Plex Mono", monospace; font-size:13px; min-width:74px; text-align:right; }
+
+      /* ---- Gemini key & analysis ---- */
+      .gem-note{ color:var(--ink2); font-size:14px; line-height:1.55; margin:0 0 12px; }
+      .gem-note a{ color:var(--accent); font-weight:600; }
+      .keyrow{ display:flex; gap:8px; flex-wrap:wrap; }
+      .keyrow input{
+        flex:1 1 220px; min-width:0; background:var(--panel2); border:1.5px solid var(--line); border-radius:10px;
+        padding:10px 14px; font-family:"IBM Plex Mono", ui-monospace, monospace; font-size:13.5px; color:var(--ink);
+      }
+      .keyrow input:focus{ outline:2px solid var(--accent); outline-offset:1px; border-color:var(--accent); }
+      .btn.small{ padding:8px 14px; font-size:13.5px; }
+      .gem-status{ font-family:"IBM Plex Mono", monospace; font-size:12px; color:var(--ink2); margin-top:10px; min-height:16px; line-height:1.5; }
+      .gem-status.err{ color:var(--red); }
+      .gem-status.ok{ color:var(--green); }
+      .gem-actions{ margin-top:14px; display:flex; flex-wrap:wrap; gap:10px; align-items:center; }
+      .gem-result{ display:none; margin-top:16px; border-top:1px solid var(--line); padding-top:14px; }
+      .gem-result.on{ display:block; }
+      .gem-result .jenis{ font-size:19px; font-weight:800; letter-spacing:-.01em; display:flex; align-items:center; flex-wrap:wrap; gap:10px; }
+      .gem-result .risiko{
+        font-family:"IBM Plex Mono", monospace; font-size:11px; font-weight:700; letter-spacing:.08em; text-transform:uppercase;
+        border:1.5px solid var(--rc, var(--ink2)); color:var(--rc, var(--ink2)); border-radius:999px; padding:4px 10px;
+        background:color-mix(in srgb, var(--rc, var(--ink2)) 10%, transparent);
+      }
+      .gem-result dl{ margin:12px 0 0; display:flex; flex-direction:column; gap:10px; }
+      .gem-result dt{ font-family:"IBM Plex Mono", monospace; font-size:10.5px; letter-spacing:.1em; text-transform:uppercase; color:var(--ink2); }
+      .gem-result dd{ margin:3px 0 0; font-size:14.5px; line-height:1.6; }
+
+      /* ---- Stats ---- */
+      .stats{ display:grid; grid-template-columns:repeat(4,1fr); gap:10px; }
+      @media (max-width:520px){ .stats{ grid-template-columns:repeat(2,1fr); } }
+      .stat{ background:var(--panel2); border:1px solid var(--line); border-radius:10px; padding:12px 14px; }
+      .stat .k{ font-family:"IBM Plex Mono", monospace; font-size:10.5px; letter-spacing:.1em; text-transform:uppercase; color:var(--ink2); }
+      .stat .v{ font-family:"IBM Plex Mono", monospace; font-size:24px; font-weight:700; margin-top:5px; }
+      .stat .v small{ font-size:12px; color:var(--ink2); font-weight:500; }
+
+      /* ---- Chart ---- */
+      #chart{ width:100%; height:150px; display:block; }
+      .chart-note{ font-family:"IBM Plex Mono", monospace; font-size:11px; color:var(--ink2); margin-top:8px; }
+
+      /* ---- Session verdict ---- */
+      .sess-verdict{ font-size:20px; font-weight:800; letter-spacing:-.01em; display:flex; align-items:center; gap:10px; }
+      .sess-verdict .dot{ width:13px; height:13px; border-radius:50%; background:var(--zc, var(--ink2)); flex:none; }
+      .sess-text{ color:var(--ink2); font-size:14.5px; line-height:1.6; margin-top:8px; }
+      .dist{ margin-top:16px; display:flex; flex-direction:column; gap:9px; }
+      .dist .row{ display:grid; grid-template-columns:118px 1fr 62px; align-items:center; gap:10px; font-size:13px; }
+      .dist .row .nm{ font-weight:600; display:flex; align-items:center; gap:7px; }
+      .dist .row .nm i{ width:9px; height:9px; border-radius:2px; background:var(--zc); flex:none; }
+      .dist .bar{ height:9px; border-radius:5px; background:var(--panel2); border:1px solid var(--line); overflow:hidden; }
+      .dist .bar b{ display:block; height:100%; background:var(--zc); width:0%; transition:width .3s; }
+      .dist .tm{ font-family:"IBM Plex Mono", monospace; font-size:12px; color:var(--ink2); text-align:right; }
+
+      /* ---- Exposure ---- */
+      .expo-now{ font-size:15px; line-height:1.6; }
+      .expo-now b{ font-family:"IBM Plex Mono", monospace; }
+      table{ width:100%; border-collapse:collapse; font-size:14px; margin-top:6px; }
+      th, td{ text-align:left; padding:8px 8px; border-bottom:1px solid var(--line); vertical-align:top; }
+      th{ font-family:"IBM Plex Mono", monospace; font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:var(--ink2); font-weight:600; }
+      td.db{ font-family:"IBM Plex Mono", monospace; font-weight:700; white-space:nowrap; }
+      tr:last-child td{ border-bottom:none; }
+      tr.hl td{ background:color-mix(in srgb, var(--amber) 10%, transparent); }
+
+      /* ---- Events ---- */
+      .events{ list-style:none; margin:0; padding:0; display:flex; flex-direction:column; }
+      .events li{ display:flex; gap:10px; align-items:baseline; padding:9px 0; border-bottom:1px solid var(--line); font-size:14px; }
+      .events li:last-child{ border-bottom:none; }
+      .events .t{ font-family:"IBM Plex Mono", monospace; font-size:12px; color:var(--ink2); white-space:nowrap; }
+      .events .pk{ font-family:"IBM Plex Mono", monospace; font-weight:700; color:var(--red); white-space:nowrap; }
+      .empty{ color:var(--ink2); font-size:14px; line-height:1.55; }
+
+      .refs{ display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:16px; }
+      @media (max-width:920px){ .refs{ grid-template-columns:1fr; } }
+      .src{ font-size:12.5px; color:var(--ink2); line-height:1.55; margin-top:12px; }
+      footer{ margin-top:22px; color:var(--ink2); font-size:13px; line-height:1.6; }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <header class="top">
+        <div>
+          <h1>NoiseGuard</h1>
+          <p>Ukur polusi suara di sekitarmu secara langsung lewat mikrofon, lalu dapatkan vonisnya: aman untuk tetap di sini, atau sebaiknya menjauh dan pindah tempat.</p>
+        </div>
+        <span class="honest">PERKIRAAN DARI MIKROFON PERANGKAT — BUKAN ALAT UKUR TERSERTIFIKASI</span>
+      </header>
+
+      <div class="layout">
+        <div class="col">
+          <!-- ===== Meter ===== -->
+          <section class="card" aria-label="Meteran kebisingan">
+            <h2>Level suara saat ini <span class="right mono" id="clockState">mikrofon mati</span></h2>
+            <div class="gauge-wrap">
+              <svg id="gauge" viewBox="-18 -2 376 210" role="img" aria-label="Pengukur level suara dalam desibel"></svg>
+            </div>
+            <div class="verdict"><span class="pill" id="verdictPill" style="--zc:var(--ink2)"><span class="dot"></span><span id="verdictLabel">BELUM MENGUKUR</span></span></div>
+            <p class="advice" id="advice">Tekan &ldquo;Mulai Mengukur&rdquo; dan izinkan akses mikrofon. Letakkan perangkat di tempat kamu biasa beraktivitas, jauhkan dari mulut dan sumber suara yang menempel langsung.</p>
+            <div class="simchip" id="simChip">MODE DEMO — SIMULASI, BUKAN PENGUKURAN NYATA</div>
+
+            <div class="controls">
+              <button class="btn primary" id="btnStart" type="button">Mulai Mengukur</button>
+              <button class="btn danger" id="btnStop" type="button" disabled>Berhenti</button>
+              <button class="btn" id="btnReset" type="button">Atur Ulang Sesi</button>
+            </div>
+            <div class="status" id="status">Mikrofon belum aktif.</div>
+            <div class="alert" id="micAlert" role="alert"></div>
+
+            <div class="demo">
+              <div class="lbl">Tidak bisa pakai mikrofon? Coba mode demo (simulasi)</div>
+              <div class="chips" id="simChips">
+                <button class="chip" type="button" data-sim="tenang">Kamar tenang</button>
+                <button class="chip" type="button" data-sim="jalan">Jalan raya sore hari</button>
+                <button class="chip" type="button" data-sim="knalpot">Knalpot brong lewat</button>
+                <button class="chip" type="button" data-sim="konstruksi">Lokasi konstruksi</button>
+              </div>
+            </div>
+
+            <details class="cal">
+              <summary>Kalibrasi &amp; cara kerja</summary>
+              <p>Mikrofon HP dan laptop tidak dikalibrasi pabrik untuk mengukur desibel, jadi angka di sini adalah <strong>perkiraan</strong> dari kekuatan sinyal mikrofon. Geser kalibrasi bila kamu punya pembanding (misalnya aplikasi dB meter lain atau sound level meter): naikkan bila angka di sini terlalu kecil, turunkan bila terlalu besar.</p>
+              <div class="calrow">
+                <span class="mono" style="font-size:12px;color:var(--ink2)">KALIBRASI</span>
+                <input type="range" id="calRange" min="70" max="115" step="1" value="92" aria-label="Nilai kalibrasi desibel" />
+                <span class="val" id="calVal">+92 dB</span>
+              </div>
+              <p>Pengukuran menonaktifkan peredam bising dan pengatur gain otomatis mikrofon bila perangkat mendukungnya, supaya angka tidak diperkecil secara diam-diam oleh sistem.</p>
+            </details>
+          </section>
+
+          <!-- ===== Gemini ===== -->
+          <section class="card" aria-label="Klasifikasi suara dengan Gemini">
+            <h2>Klasifikasi suara — Gemini</h2>
+            <p class="gem-note">Meteran dB di atas hanya tahu seberapa keras suara itu. Gemini bisa <strong>mendengarkan jenis suaranya</strong> — knalpot, konstruksi, keramaian, atau lainnya — lalu menjelaskan risikonya. Masukkan kunci API Gemini milikmu untuk mengaktifkannya; belum punya? Buat gratis di <a href="https://aistudio.google.com/api-keys" target="_blank" rel="noopener">Google AI Studio</a>.</p>
+            <label for="geminiKey" style="display:block;font-weight:700;font-size:14px;margin-bottom:8px;">Kunci API Gemini</label>
+            <div class="keyrow">
+              <input type="password" id="geminiKey" placeholder="Tempel kunci API Gemini di sini (AIza…)" autocomplete="off" autocapitalize="off" spellcheck="false" />
+              <button class="btn small" id="btnToggleKey" type="button">Lihat</button>
+              <button class="btn small" id="btnClearKey" type="button">Hapus</button>
+            </div>
+            <div class="gem-status" id="gemKeyStatus">Belum ada kunci — analisis Gemini nonaktif. Meteran dB tetap berjalan tanpa kunci.</div>
+            <p class="gem-note" style="margin-top:10px;">Kunci hanya tersimpan di memori halaman selama halaman ini terbuka — tidak tertulis di file, tidak disimpan di browser, dan hilang saat halaman ditutup atau dimuat ulang.</p>
+            <div class="gem-actions">
+              <button class="btn primary" id="btnAnalyze" type="button">Dengarkan &amp; Analisis Suara (5 detik)</button>
+            </div>
+            <div class="gem-status" id="gemStatus">Analisis akan merekam cuplikan 5 detik dari mikrofon, lalu mengirimnya ke Gemini untuk dikenali jenis suaranya.</div>
+            <div class="gem-result" id="gemResult">
+              <div class="jenis"><span id="gemJenis">—</span><span class="risiko" id="gemRisiko">Risiko —</span></div>
+              <dl>
+                <div><dt>Keyakinan Gemini</dt><dd class="mono" id="gemKeyakinan">—</dd></div>
+                <div><dt>Penjelasan</dt><dd id="gemPenjelasan">—</dd></div>
+                <div><dt>Saran</dt><dd id="gemSaran">—</dd></div>
+              </dl>
+            </div>
+          </section>
+
+          <!-- ===== Chart ===== -->
+          <section class="card" aria-label="Grafik riwayat kebisingan">
+            <h2>Riwayat 90 detik terakhir</h2>
+            <canvas id="chart"></canvas>
+            <div class="chart-note">Garis putus-putus = ambang bahaya pendengaran 85 dB (NIOSH). Pita warna = zona aman &rarr; berbahaya.</div>
+          </section>
+
+          <!-- ===== Events ===== -->
+          <section class="card" aria-label="Peristiwa bising">
+            <h2>Peristiwa bising terekam <span class="right">&ge; 85 dB</span></h2>
+            <ul class="events" id="eventList"></ul>
+            <p class="empty" id="eventEmpty">Belum ada peristiwa di atas 85 dB pada sesi ini. Ledakan suara seperti knalpot brong, klakson dekat, atau benturan keras akan tercatat di sini beserta puncaknya.</p>
+          </section>
+        </div>
+
+        <div class="col">
+          <!-- ===== Stats ===== -->
+          <section aria-label="Statistik sesi">
+            <div class="stats">
+              <div class="stat"><div class="k">Rata-rata sesi</div><div class="v" id="stLeq">--.-<small> dB</small></div></div>
+              <div class="stat"><div class="k">Puncak</div><div class="v" id="stPeak">--.-<small> dB</small></div></div>
+              <div class="stat"><div class="k">Tertinggi stabil</div><div class="v" id="stP95">--.-<small> dB</small></div></div>
+              <div class="stat"><div class="k">Durasi ukur</div><div class="v" id="stDur">00:00</div></div>
+            </div>
+          </section>
+
+          <!-- ===== Session verdict ===== -->
+          <section class="card" aria-label="Penilaian lingkungan">
+            <h2>Penilaian lingkungan ini</h2>
+            <div class="sess-verdict" id="sessVerdict" style="--zc:var(--ink2)"><span class="dot"></span><span id="sessTitle">Belum cukup data</span></div>
+            <p class="sess-text" id="sessText">Ukur minimal beberapa detik untuk melihat penilaian. Semakin lama kamu mengukur (terutama di jam-jam sibuk), semakin mewakili penilaian ini terhadap lingkunganmu sehari-hari.</p>
+            <div class="dist" id="dist">
+              <div class="row" style="--zc:var(--green)"><span class="nm"><i></i>Aman &lt;55</span><span class="bar"><b data-zone="aman"></b></span><span class="tm" data-time="aman">0%</span></div>
+              <div class="row" style="--zc:var(--amber)"><span class="nm"><i></i>Cukup 55–69</span><span class="bar"><b data-zone="cukup"></b></span><span class="tm" data-time="cukup">0%</span></div>
+              <div class="row" style="--zc:var(--orange)"><span class="nm"><i></i>Bising 70–84</span><span class="bar"><b data-zone="bising"></b></span><span class="tm" data-time="bising">0%</span></div>
+              <div class="row" style="--zc:var(--red)"><span class="nm"><i></i>Bahaya &ge;85</span><span class="bar"><b data-zone="bahaya"></b></span><span class="tm" data-time="bahaya">0%</span></div>
+            </div>
+          </section>
+
+          <!-- ===== Exposure ===== -->
+          <section class="card" aria-label="Batas waktu paparan aman">
+            <h2>Batas paparan aman (NIOSH)</h2>
+            <p class="expo-now" id="expoNow">Pada level saat ini: <b>—</b></p>
+            <table aria-label="Tabel batas waktu paparan menurut NIOSH">
+              <thead><tr><th>Level</th><th>Batas aman per hari</th></tr></thead>
+              <tbody>
+                <tr data-lvl="85"><td class="db">85 dB</td><td>8 jam</td></tr>
+                <tr data-lvl="88"><td class="db">88 dB</td><td>4 jam</td></tr>
+                <tr data-lvl="91"><td class="db">91 dB</td><td>2 jam</td></tr>
+                <tr data-lvl="94"><td class="db">94 dB</td><td>1 jam</td></tr>
+                <tr data-lvl="97"><td class="db">97 dB</td><td>30 menit</td></tr>
+                <tr data-lvl="100"><td class="db">100 dB</td><td>15 menit</td></tr>
+                <tr data-lvl="106"><td class="db">106 dB</td><td>&plusmn;4 menit</td></tr>
+                <tr data-lvl="112"><td class="db">112 dB</td><td>&plusmn;1 menit</td></tr>
+              </tbody>
+            </table>
+            <p class="src">Setiap naik 3 dB, batas waktu aman berkurang setengahnya. Di atas 85 dB terus-menerus, risiko gangguan pendengaran permanen naik nyata.</p>
+          </section>
+        </div>
+      </div>
+
+      <!-- ===== References ===== -->
+      <div class="refs">
+        <section class="card" aria-label="Baku tingkat kebisingan Indonesia">
+          <h2>Baku mutu kebisingan kawasan (Indonesia)</h2>
+          <table aria-label="Baku tingkat kebisingan menurut Kepmen Lingkungan Hidup Nomor 48 Tahun 1996">
+            <thead><tr><th>Peruntukan kawasan / kegiatan</th><th>Baku mutu</th></tr></thead>
+            <tbody>
+              <tr><td>Ruang terbuka hijau</td><td class="db">50 dB</td></tr>
+              <tr><td>Perumahan &amp; pemukiman</td><td class="db">55 dB</td></tr>
+              <tr><td>Rumah sakit</td><td class="db">55 dB</td></tr>
+              <tr><td>Sekolah &amp; tempat ibadah</td><td class="db">55 dB</td></tr>
+              <tr><td>Pemerintahan &amp; fasilitas umum</td><td class="db">60 dB</td></tr>
+              <tr><td>Perkantoran</td><td class="db">65 dB</td></tr>
+              <tr><td>Perdagangan &amp; jasa</td><td class="db">70 dB</td></tr>
+              <tr><td>Industri</td><td class="db">70 dB</td></tr>
+              <tr><td>Rekreasi</td><td class="db">70 dB</td></tr>
+            </tbody>
+          </table>
+          <p class="src">Sumber: Keputusan Menteri Negara Lingkungan Hidup No. 48/MENLH/11/1996 tentang Baku Tingkat Kebisingan. Rata-rata sesimu bisa dibandingkan dengan baris yang sesuai tempat tinggalmu.</p>
+        </section>
+
+        <section class="card" aria-label="Contoh level suara sehari-hari">
+          <h2>Suara sehari-hari sebagai pembanding</h2>
+          <table aria-label="Contoh kisaran level suara umum">
+            <thead><tr><th>Sumber suara</th><th>Kisaran umum</th></tr></thead>
+            <tbody>
+              <tr><td>Bisikan dari jarak 1 meter</td><td class="db">&plusmn;30 dB</td></tr>
+              <tr><td>Ruangan / perpustakaan tenang</td><td class="db">&plusmn;40 dB</td></tr>
+              <tr><td>Hujan sedang di luar rumah</td><td class="db">&plusmn;50 dB</td></tr>
+              <tr><td>Percakapan normal</td><td class="db">&plusmn;60 dB</td></tr>
+              <tr><td>Lalu lintas kota padat</td><td class="db">&plusmn;80 dB</td></tr>
+              <tr><td>Bor listrik / pekerjaan konstruksi</td><td class="db">&plusmn;95 dB</td></tr>
+              <tr><td>Knalpot brong dari jarak dekat</td><td class="db">&plusmn;105 dB</td></tr>
+              <tr><td>Klakson mobil dari jarak 5 meter</td><td class="db">&plusmn;110 dB</td></tr>
+              <tr><td>Sirene ambulans dari jarak dekat</td><td class="db">&plusmn;120 dB</td></tr>
+            </tbody>
+          </table>
+          <p class="src">Kisaran umum dari berbagai panduan kesehatan pendengaran; angka persisnya tergantung jarak dan kondisi. Patokan praktis: bila kamu harus berteriak agar didengar orang di sebelahmu, levelnya kemungkinan sudah di atas 85 dB.</p>
+        </section>
+      </div>
+
+      <footer>
+        Cara membaca hasil: ukur di beberapa waktu berbeda (pagi, sore, malam) sebelum menyimpulkan. Satu ledakan knalpot sesaat tidak otomatis berarti lingkunganmu berbahaya — yang menentukan adalah rata-rata sesi dan seberapa sering level tinggi terjadi. Bila rata-rata sesimu berulang kali melewati baku mutu kawasan dan peristiwa &ge;85 dB sering muncul, itu sinyal kuat untuk menjauh dari sumber suara atau mempertimbangkan pindah tempat.
+      </footer>
+    </div>
+
+    <script>
+    (function(){
+      "use strict";
+      var MIN_DB = 30, MAX_DB = 120;
+      var ZONES = [
+        { key:"aman",   max:55,       label:"AMAN",        css:"var(--green)",  hex:"#2fbf7d",
+          advice:"Level ini aman untuk beristirahat, bekerja, dan standby dalam waktu lama — masih di bawah baku mutu kawasan perumahan (55 dB)." },
+        { key:"cukup",  max:70,       label:"CUKUP BISING", css:"var(--amber)",  hex:"#e0aa1e",
+          advice:"Sudah melewati baku mutu kawasan perumahan (55 dB). Suara terasa ramai; konsentrasi dan percakapan mulai terganggu bila berlangsung terus." },
+        { key:"bising", max:85,       label:"BISING",      css:"var(--orange)", hex:"#f0732f",
+          advice:"Setara lalu lintas padat. Batasi waktu berada di sini — paparan lama membuat lelah, stres, dan mengganggu tidur." },
+        { key:"bahaya", max:Infinity, label:"BERBAHAYA",   css:"var(--red)",    hex:"#f04444",
+          advice:"Risiko gangguan pendengaran nyata pada level ini. Sebaiknya menjauh dari sumber suara sekarang, atau gunakan pelindung telinga." }
+      ];
+      function zoneOf(db){ for (var i=0;i<ZONES.length;i++) if (db < ZONES[i].max) return ZONES[i]; return ZONES[ZONES.length-1]; }
+      function clamp(v,a,b){ return Math.min(b, Math.max(a,v)); }
+      function fmt(v, d){ return v.toFixed(d == null ? 1 : d).replace(".", ","); }
+      function fmtDur(sec){
+        sec = Math.round(sec);
+        var m = Math.floor(sec/60), s = sec%60;
+        return (m<10?"0":"")+m+":"+(s<10?"0":"")+s;
+      }
+      function $(id){ return document.getElementById(id); }
+
+      /* ---------- Gauge (SVG) ---------- */
+      var CX=170, CY=178, R=132;
+      var svg = $("gauge"), SVGNS="http://www.w3.org/2000/svg";
+      function polar(v, r){
+        var ang = Math.PI * (1 - (v-MIN_DB)/(MAX_DB-MIN_DB));
+        return [CX + r*Math.cos(ang), CY - r*Math.sin(ang)];
+      }
+      function arcPath(v0, v1, r){
+        var p0 = polar(v0, r), p1 = polar(v1, r);
+        var large = (v1-v0) > (MAX_DB-MIN_DB)/2 ? 1 : 0;
+        return "M "+p0[0].toFixed(1)+" "+p0[1].toFixed(1)+" A "+r+" "+r+" 0 "+large+" 1 "+p1[0].toFixed(1)+" "+p1[1].toFixed(1);
+      }
+      function el(name, attrs){
+        var e = document.createElementNS(SVGNS, name);
+        for (var k in attrs) e.setAttribute(k, attrs[k]);
+        svg.appendChild(e); return e;
+      }
+      // zone segments
+      var bounds = [MIN_DB,55,70,85,MAX_DB];
+      for (var i=0;i<4;i++){
+        el("path", { d: arcPath(bounds[i]+0.7, bounds[i+1]-0.7, R), fill:"none",
+          stroke: ZONES[i].hex, "stroke-width": 20, opacity: 0.28 });
+      }
+      var activeArc = el("path", { d:"", fill:"none", stroke: ZONES[0].hex, "stroke-width": 20, "stroke-linecap":"butt" });
+      // ticks + labels
+      for (var tv=30; tv<=120; tv+=10){
+        var p1 = polar(tv, R+16), p2 = polar(tv, R+23);
+        el("line", { x1:p1[0], y1:p1[1], x2:p2[0], y2:p2[1], stroke:"var(--ink2)", "stroke-width": tv%30===0?2:1, opacity:.6 });
+      }
+      [30,55,70,85,100,120].forEach(function(tv){
+        var p = polar(tv, R+38);
+        var t = el("text", { x:p[0], y:p[1]+4, "text-anchor":"middle", "font-size":"12.5",
+          "font-family":"'IBM Plex Mono', monospace", fill:"var(--ink2)" });
+        t.textContent = tv;
+      });
+      var needle = el("line", { x1:CX, y1:CY+14, x2:CX, y2:CY-R+36, stroke:"var(--ink)", "stroke-width":3.5, "stroke-linecap":"round" });
+      el("circle", { cx:CX, cy:CY, r:9, fill:"var(--ink)" });
+      el("circle", { cx:CX, cy:CY, r:3.5, fill:"var(--panel)" });
+      var svgNum = el("text", { x:CX, y:118, "text-anchor":"middle", "font-size":"62", "font-weight":"700",
+        "font-family":"'IBM Plex Mono', monospace", fill:"var(--ink)" });
+      svgNum.textContent = "--,-";
+      var svgUnit = el("text", { x:CX, y:140, "text-anchor":"middle", "font-size":"12.5",
+        "font-family":"'IBM Plex Mono', monospace", fill:"var(--ink2)" });
+      svgUnit.textContent = "dB · perkiraan";
+      function drawGauge(db){
+        var p = polar(clamp(db, MIN_DB, MAX_DB), R-36);
+        needle.setAttribute("x2", p[0].toFixed(1)); needle.setAttribute("y2", p[1].toFixed(1));
+        if (db > MIN_DB + 0.4){
+          activeArc.setAttribute("d", arcPath(MIN_DB, clamp(db, MIN_DB, MAX_DB), R));
+          activeArc.setAttribute("stroke", zoneOf(db).hex);
+          activeArc.setAttribute("opacity", "0.95");
+        } else { activeArc.setAttribute("opacity","0"); }
+      }
+
+      /* ---------- State ---------- */
+      var running=false, mode=null; // 'mic' | 'sim'
+      var audioCtx=null, analyser=null, micStream=null, timeBuf=null;
+      var calibration=92;
+      var rawDb=MIN_DB, dispDb=MIN_DB, rafId=null, lastSample=0, lastFrame=0;
+      var sampleCount=0, leqPowSum=0, peakDb=0, samples=[];
+      var zoneSecs={ aman:0, cukup:0, bising:0, bahaya:0 };
+      var history=[];
+      var events=[], curEvent=null;
+      var sim=null;
+
+      var SIMS = {
+        tenang:     { name:"Kamar tenang",        base:39, vary:2.5 },
+        jalan:      { name:"Jalan raya sore hari", base:74, vary:5, spike:{ every:[6000,12000], dur:[1500,2600], lvl:[86,94] } },
+        knalpot:    { name:"Knalpot brong lewat",  base:57, vary:4, spike:{ every:[4000,9000],  dur:[1300,2100], lvl:[100,110] } },
+        konstruksi: { name:"Lokasi konstruksi",   base:86, vary:4, spike:{ every:[2000,5000],  dur:[250,600],   lvl:[94,102] } }
+      };
+      function rnd(range){ return range[0] + Math.random()*(range[1]-range[0]); }
+      function simLevel(now){
+        var c = sim.cfg;
+        var target = c.base + Math.sin(now/4200)*c.vary*0.5 + (Math.random()*2-1)*c.vary*0.6;
+        if (c.spike){
+          if (now >= sim.nextSpike){
+            sim.spikeUntil = now + rnd(c.spike.dur);
+            sim.spikeLvl = rnd(c.spike.lvl);
+            sim.nextSpike = sim.spikeUntil + rnd(c.spike.every);
+          }
+          if (now < sim.spikeUntil) target = sim.spikeLvl + (Math.random()*2-1)*2.5;
+        }
+        sim.val += (target - sim.val) * 0.3;
+        return sim.val;
+      }
+      function measureMic(){
+        analyser.getFloatTimeDomainData(timeBuf);
+        var sum=0;
+        for (var i=0;i<timeBuf.length;i++){ var v=timeBuf[i]; sum += v*v; }
+        var rms = Math.sqrt(sum/timeBuf.length);
+        if (rms <= 0.00001) return MIN_DB;
+        return clamp(20*Math.log10(rms) + calibration, 0, 140);
+      }
+
+      /* ---------- UI refs ---------- */
+      var pill=$("verdictPill"), pillLabel=$("verdictLabel"), advice=$("advice"),
+          statusEl=$("status"), clockState=$("clockState"), alertBox=$("micAlert"),
+          simChip=$("simChip"), btnStart=$("btnStart"), btnStop=$("btnStop");
+
+      function setPill(zone, text, pulse){
+        pill.style.setProperty("--zc", zone ? zone.css : "var(--ink2)");
+        pillLabel.textContent = text;
+        pill.classList.toggle("pulse", !!pulse);
+      }
+      function showAlert(msg){ alertBox.textContent = msg; alertBox.classList.add("on"); }
+      function hideAlert(){ alertBox.classList.remove("on"); }
+
+      /* ---------- Sampling & stats ---------- */
+      function doSample(db, now){
+        sampleCount++;
+        leqPowSum += Math.pow(10, db/10);
+        if (db > peakDb) peakDb = db;
+        samples.push(db); if (samples.length > 36000) samples.shift();
+        zoneSecs[zoneOf(db).key] += 0.1;
+        history.push(db); if (history.length > 900) history.shift();
+
+        // events >= 85 dB
+        if (db >= 85){
+          if (!curEvent) curEvent = { start: now, peak: db };
+          else if (db > curEvent.peak) curEvent.peak = db;
+        } else if (db < 80 && curEvent){
+          events.unshift({ t: new Date(curEvent.start), peak: curEvent.peak, dur: (now-curEvent.start)/1000 });
+          if (events.length > 8) events.pop();
+          curEvent = null;
+          renderEvents();
+        }
+
+        // readouts
+        var leq = sampleCount ? 10*Math.log10(leqPowSum/sampleCount) : 0;
+        $("stLeq").innerHTML = fmt(leq) + "<small> dB</small>";
+        $("stPeak").innerHTML = fmt(peakDb) + "<small> dB</small>";
+        $("stDur").textContent = fmtDur(sampleCount/10);
+        if (sampleCount % 20 === 0 && samples.length > 10){
+          var sorted = samples.slice().sort(function(a,b){ return a-b; });
+          $("stP95").innerHTML = fmt(sorted[Math.floor(sorted.length*0.95)]) + "<small> dB</small>";
+        }
+        updateSession(leq);
+        updateExpo(db);
+        drawChart();
+      }
+
+      function updateSession(leq){
+        var total = zoneSecs.aman + zoneSecs.cukup + zoneSecs.bising + zoneSecs.bahaya;
+        if (total <= 0) return;
+        ["aman","cukup","bising","bahaya"].forEach(function(k){
+          var pct = zoneSecs[k]/total*100;
+          document.querySelector('[data-zone="'+k+'"]').style.width = pct + "%";
+          document.querySelector('[data-time="'+k+'"]').textContent = fmt(pct, 0) + "%";
+        });
+        var box = $("sessVerdict"), title = $("sessTitle"), text = $("sessText");
+        var pct85 = zoneSecs.bahaya/total*100;
+        if (sampleCount < 30){
+          box.style.setProperty("--zc","var(--ink2)");
+          title.textContent = "Sedang mengumpulkan data…";
+          text.textContent = "Baru " + fmtDur(sampleCount/10) + " terukur. Tunggu sedikit lagi — penilaian yang mewakili butuh pengukuran di beberapa waktu berbeda juga.";
+        } else if (leq < 55 && pct85 === 0){
+          box.style.setProperty("--zc","var(--green)");
+          title.textContent = "Aman untuk standby";
+          text.textContent = "Rata-rata sesi " + fmt(leq) + " dB — di bawah baku mutu perumahan 55 dB dan tidak ada ledakan berbahaya. Lingkungan ini nyaman untuk ditinggali dan beraktivitas lama.";
+        } else if (leq < 70 && pct85 < 2){
+          box.style.setProperty("--zc","var(--amber)");
+          title.textContent = "Waspada — pantau terus";
+          text.textContent = "Rata-rata sesi " + fmt(leq) + " dB, melewati baku mutu perumahan 55 dB. Masih bisa ditinggali, tapi kebisingan seperti ini mengganggu istirahat bila terjadi setiap hari — ukur lagi di jam lain untuk memastikan polanya.";
+        } else if (leq >= 85 || pct85 >= 10){
+          box.style.setProperty("--zc","var(--red)");
+          title.textContent = "Berbahaya — sebaiknya menjauh / mengungsi";
+          text.textContent = "Rata-rata sesi " + fmt(leq) + " dB dengan " + fmt(pct85,0) + "% waktu di zona bahaya (≥85 dB). Paparan seperti ini berisiko merusak pendengaran. Bila pola ini terjadi setiap hari, menjauh dari sumber suara atau pindah tempat adalah langkah yang masuk akal.";
+        } else {
+          box.style.setProperty("--zc","var(--orange)");
+          title.textContent = "Tidak nyaman — pertimbangkan menjauh";
+          text.textContent = "Rata-rata sesi " + fmt(leq) + " dB — setara lingkungan lalu lintas padat. Untuk sesekali masih tertahankan, tapi untuk tempat tinggal jangka panjang pola ini melelahkan dan mengganggu tidur.";
+        }
+      }
+
+      function updateExpo(db){
+        var trs = document.querySelectorAll("tr[data-lvl]");
+        var hl = -1;
+        trs.forEach(function(tr, idx){ if (db >= parseFloat(tr.getAttribute("data-lvl"))) hl = idx; tr.classList.remove("hl"); });
+        if (hl >= 0) trs[hl].classList.add("hl");
+        var el = $("expoNow");
+        if (db < 85){
+          el.innerHTML = "Pada level saat ini (<b>" + fmt(db) + " dB</b>): di bawah 85 dB — tidak ada batas khusus NIOSH untuk paparan harian, pendengaran relatif aman.";
+        } else {
+          var mins = 480 / Math.pow(2, (db-85)/3);
+          var batas;
+          if (mins >= 60) batas = "±" + fmt(mins/60) + " jam";
+          else if (mins >= 1) batas = "±" + fmt(mins, 0) + " menit";
+          else batas = "±" + fmt(mins*60, 0) + " detik";
+          el.innerHTML = "Pada level saat ini (<b>" + fmt(db) + " dB</b>): batas paparan aman <b>" + batas + "</b> per hari menurut NIOSH. Lewat dari itu, risiko gangguan pendengaran naik.";
+        }
+      }
+
+      function renderEvents(){
+        var list = $("eventList");
+        list.innerHTML = "";
+        $("eventEmpty").style.display = events.length ? "none" : "block";
+        events.forEach(function(ev){
+          var li = document.createElement("li");
+          var jam = ev.t.toLocaleTimeString("id-ID", { hour:"2-digit", minute:"2-digit", second:"2-digit" });
+          li.innerHTML = '<span class="t"></span><span class="pk"></span><span></span>';
+          li.children[0].textContent = jam;
+          li.children[1].textContent = "Puncak " + fmt(ev.peak, 0) + " dB";
+          li.children[2].textContent = "berlangsung ±" + fmt(Math.max(ev.dur, 0.1)) + " detik — ledakan suara keras sempat terjadi.";
+          list.appendChild(li);
+        });
+      }
+
+      /* ---------- Chart ---------- */
+      var chart = $("chart"), ctx = chart.getContext("2d");
+      function drawChart(){
+        var w = chart.clientWidth, h = 150;
+        if (!w) return;
+        var dpr = window.devicePixelRatio || 1;
+        if (chart.width !== Math.round(w*dpr)){ chart.width = Math.round(w*dpr); chart.height = Math.round(h*dpr); }
+        ctx.setTransform(dpr,0,0,dpr,0,0);
+        ctx.clearRect(0,0,w,h);
+        function Y(db){ return h - (clamp(db,MIN_DB,MAX_DB)-MIN_DB)/(MAX_DB-MIN_DB)*h; }
+        var zb = [[30,55],[55,70],[70,85],[85,120]];
+        zb.forEach(function(b, i){
+          ctx.fillStyle = ZONES[i].hex + "14";
+          ctx.fillRect(0, Y(b[1]), w, Y(b[0])-Y(b[1]));
+        });
+        ctx.strokeStyle = "rgba(128,128,128,.25)"; ctx.lineWidth = 1; ctx.setLineDash([]);
+        [55,70,100].forEach(function(g){
+          ctx.beginPath(); ctx.moveTo(0, Y(g)); ctx.lineTo(w, Y(g)); ctx.stroke();
+        });
+        ctx.strokeStyle = "#f04444"; ctx.setLineDash([5,4]); ctx.lineWidth = 1.2;
+        ctx.beginPath(); ctx.moveTo(0, Y(85)); ctx.lineTo(w, Y(85)); ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.fillStyle = "#f04444"; ctx.font = "10px 'IBM Plex Mono', monospace";
+        ctx.fillText("85", 4, Y(85)-4);
+        if (history.length < 2){
+          ctx.fillStyle = getComputedStyle(document.body).getPropertyValue("--ink2");
+          ctx.font = "12px 'IBM Plex Mono', monospace";
+          ctx.fillText("Grafik akan terisi begitu pengukuran berjalan…", 10, h/2);
+          return;
+        }
+        var ink = getComputedStyle(document.body).getPropertyValue("--ink");
+        ctx.strokeStyle = ink; ctx.lineWidth = 1.8; ctx.beginPath();
+        var n = history.length;
+        for (var i=0;i<n;i++){
+          var x = i/(899)*w, y = Y(history[i]);
+          if (i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+        }
+        ctx.stroke();
+        var last = history[n-1];
+        ctx.fillStyle = zoneOf(last).hex;
+        ctx.beginPath(); ctx.arc((n-1)/899*w, Y(last), 3.5, 0, Math.PI*2); ctx.fill();
+      }
+
+      /* ---------- Main loop ---------- */
+      function loop(ts){
+        if (!running) return;
+        rafId = requestAnimationFrame(loop);
+        rawDb = (mode === "mic") ? measureMic() : simLevel(ts);
+        var k = rawDb > dispDb ? 0.45 : 0.07;
+        dispDb += (rawDb - dispDb) * k;
+        drawGauge(dispDb);
+        svgNum.textContent = fmt(dispDb);
+        var z = zoneOf(dispDb);
+        if (pillLabel.textContent !== z.label || !pill.classList.contains("pulse")){
+          setPill(z, z.label, z.key === "bahaya");
+          advice.textContent = z.advice;
+        }
+        if (ts - lastSample >= 100){ lastSample = ts; doSample(rawDb, ts); }
+      }
+
+      function setRunningUI(on){
+        btnStart.disabled = on; btnStop.disabled = !on;
+        clockState.textContent = !on ? "mikrofon mati" : (mode === "mic" ? "mengukur · mikrofon" : "mengukur · simulasi");
+      }
+      function beginLoop(){
+        running = true; lastSample = 0;
+        setRunningUI(true);
+        rafId = requestAnimationFrame(loop);
+      }
+      function stopAll(silent){
+        running = false;
+        if (rafId) cancelAnimationFrame(rafId);
+        if (micStream){ micStream.getTracks().forEach(function(t){ t.stop(); }); micStream = null; }
+        if (audioCtx){ audioCtx.close(); audioCtx = null; }
+        analyser = null; sim = null;
+        document.querySelectorAll("#simChips .chip").forEach(function(c){ c.classList.remove("active"); });
+        simChip.classList.remove("on");
+        mode = null;
+        setRunningUI(false);
+        if (!silent){
+          setPill(null, "PENGUKURAN BERHENTI", false);
+          statusEl.textContent = "Pengukuran berhenti. Hasil sesi tetap tampil di panel penilaian.";
+        }
+      }
+
+      btnStart.addEventListener("click", async function(){
+        hideAlert();
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
+          showAlert("Browser atau perangkat ini tidak menyediakan akses mikrofon (getUserMedia tidak tersedia). Coba browser modern lewat koneksi HTTPS, atau gunakan mode demo di bawah.");
+          return;
+        }
+        stopAll(true);
+        statusEl.textContent = "Meminta izin mikrofon…";
+        try {
+          micStream = await navigator.mediaDevices.getUserMedia({
+            audio: { echoCancellation:false, noiseSuppression:false, autoGainControl:false }
+          });
+        } catch(e){
+          statusEl.textContent = "Mikrofon belum aktif.";
+          showAlert("Akses mikrofon ditolak atau tidak ditemukan. Izinkan mikrofon untuk situs ini di pengaturan browser, lalu tekan Mulai Mengukur lagi — atau gunakan mode demo di bawah.");
+          return;
+        }
+        var AC = window.AudioContext || window.webkitAudioContext;
+        audioCtx = new AC();
+        if (audioCtx.state === "suspended") audioCtx.resume();
+        var src = audioCtx.createMediaStreamSource(micStream);
+        analyser = audioCtx.createAnalyser();
+        analyser.fftSize = 2048;
+        timeBuf = new Float32Array(analyser.fftSize);
+        src.connect(analyser);
+        mode = "mic";
+        simChip.classList.remove("on");
+        statusEl.textContent = "Mengukur lewat mikrofon. Suara tidak direkam dan tidak dikirim ke mana pun — hanya levelnya yang dihitung di perangkat ini.";
+        beginLoop();
+      });
+
+      btnStop.addEventListener("click", function(){ stopAll(false); });
+
+      $("btnReset").addEventListener("click", function(){
+        sampleCount = 0; leqPowSum = 0; peakDb = 0; samples = []; history = [];
+        zoneSecs = { aman:0, cukup:0, bising:0, bahaya:0 };
+        events = []; curEvent = null;
+        $("stLeq").innerHTML = "--.-<small> dB</small>";
+        $("stPeak").innerHTML = "--.-<small> dB</small>";
+        $("stP95").innerHTML = "--.-<small> dB</small>";
+        $("stDur").textContent = "00:00";
+        ["aman","cukup","bising","bahaya"].forEach(function(k){
+          document.querySelector('[data-zone="'+k+'"]').style.width = "0%";
+          document.querySelector('[data-time="'+k+'"]').textContent = "0%";
+        });
+        $("sessVerdict").style.setProperty("--zc","var(--ink2)");
+        $("sessTitle").textContent = "Belum cukup data";
+        $("sessText").textContent = "Sesi diatur ulang. Ukur lagi untuk mendapatkan penilaian baru.";
+        renderEvents(); drawChart();
+      });
+
+      document.querySelectorAll("#simChips .chip").forEach(function(chip){
+        chip.addEventListener("click", function(){
+          var key = chip.getAttribute("data-sim");
+          var wasActive = chip.classList.contains("active");
+          stopAll(true);
+          if (wasActive){ setPill(null, "BELUM MENGUKUR", false); statusEl.textContent = "Mode demo berhenti."; return; }
+          chip.classList.add("active");
+          sim = { cfg: SIMS[key], val: SIMS[key].base, nextSpike: performance.now() + 1200, spikeUntil: 0, spikeLvl: 0 };
+          mode = "sim"; dispDb = SIMS[key].base;
+          simChip.classList.add("on");
+          statusEl.textContent = "Mode demo: " + SIMS[key].name + " (simulasi — angka dibuat menyerupai kondisi aslinya, bukan dari mikrofon).";
+          beginLoop();
+        });
+      });
+
+      var calRange = $("calRange");
+      calRange.addEventListener("input", function(){
+        calibration = parseInt(calRange.value, 10);
+        $("calVal").textContent = "+" + calibration + " dB";
+      });
+
+      /* ---------- Gemini: kunci API + klasifikasi suara ---------- */
+      var geminiKey = ""; // hanya di memori halaman — tidak disimpan ke penyimpanan browser mana pun
+      var keyInput = $("geminiKey"), keyStatus = $("gemKeyStatus"),
+          gemStatus = $("gemStatus"), btnAnalyze = $("btnAnalyze"), gemResult = $("gemResult");
+      var analyzing = false;
+
+      function setKeyStatus(){
+        if (geminiKey){
+          keyStatus.textContent = geminiKey.length >= 20
+            ? "Kunci terisi (" + geminiKey.length + " karakter) — analisis Gemini aktif. Kunci tidak ditampilkan dan tidak disimpan."
+            : "Kunci terisi, tapi terlihat terlalu pendek — kunci Gemini biasanya diawali \"AIza\" dan jauh lebih panjang.";
+          keyStatus.className = "gem-status" + (geminiKey.length >= 20 ? " ok" : " err");
+        } else {
+          keyStatus.textContent = "Belum ada kunci — analisis Gemini nonaktif. Meteran dB tetap berjalan tanpa kunci.";
+          keyStatus.className = "gem-status";
+        }
+      }
+      keyInput.addEventListener("input", function(){
+        geminiKey = keyInput.value.trim();
+        setKeyStatus();
+      });
+      $("btnToggleKey").addEventListener("click", function(){
+        var show = keyInput.type === "password";
+        keyInput.type = show ? "text" : "password";
+        this.textContent = show ? "Sembunyi" : "Lihat";
+      });
+      $("btnClearKey").addEventListener("click", function(){
+        keyInput.value = ""; geminiKey = "";
+        keyInput.type = "password"; $("btnToggleKey").textContent = "Lihat";
+        gemResult.classList.remove("on");
+        gemStatus.textContent = "Kunci dihapus dari halaman. Analisis Gemini nonaktif sampai kunci baru dimasukkan.";
+        gemStatus.className = "gem-status";
+        setKeyStatus();
+      });
+
+      function mergeChunks(chunks){
+        var total = 0, i;
+        for (i = 0; i < chunks.length; i++) total += chunks[i].length;
+        var out = new Float32Array(total), off = 0;
+        for (i = 0; i < chunks.length; i++){ out.set(chunks[i], off); off += chunks[i].length; }
+        return out;
+      }
+      function downsample(buffer, inRate, outRate){
+        if (inRate === outRate) return buffer;
+        var ratio = inRate / outRate, newLen = Math.round(buffer.length / ratio);
+        var result = new Float32Array(newLen), oR = 0, oB = 0;
+        while (oR < newLen){
+          var next = Math.round((oR + 1) * ratio), accum = 0, count = 0;
+          for (var i = oB; i < next && i < buffer.length; i++){ accum += buffer[i]; count++; }
+          result[oR] = count ? accum / count : 0;
+          oR++; oB = next;
+        }
+        return result;
+      }
+      function wavBase64(samples, sampleRate){
+        var buf = new ArrayBuffer(44 + samples.length * 2);
+        var v = new DataView(buf);
+        function wstr(off, s){ for (var i = 0; i < s.length; i++) v.setUint8(off + i, s.charCodeAt(i)); }
+        function w32(off, x){ v.setUint32(off, x, true); }
+        function w16(off, x){ v.setUint16(off, x, true); }
+        wstr(0, "RIFF"); w32(4, 36 + samples.length * 2); wstr(8, "WAVE");
+        wstr(12, "fmt "); w32(16, 16); w16(20, 1); w16(22, 1);
+        w32(24, sampleRate); w32(28, sampleRate * 2); w16(32, 2); w16(34, 16);
+        wstr(36, "data"); w32(40, samples.length * 2);
+        for (var i = 0; i < samples.length; i++){
+          var s = Math.max(-1, Math.min(1, samples[i]));
+          v.setInt16(44 + i * 2, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
+        }
+        var bytes = new Uint8Array(buf), bin = "", CH = 0x8000;
+        for (var j = 0; j < bytes.length; j += CH){
+          bin += String.fromCharCode.apply(null, bytes.subarray(j, j + CH));
+        }
+        return btoa(bin);
+      }
+      function captureClip(seconds){
+        return new Promise(function(resolve, reject){
+          if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
+            reject(new Error("Browser ini tidak menyediakan akses mikrofon."));
+            return;
+          }
+          navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } })
+          .then(function(stream){
+            var AC = window.AudioContext || window.webkitAudioContext;
+            var actx = new AC();
+            if (actx.state === "suspended") actx.resume();
+            var source = actx.createMediaStreamSource(stream);
+            var proc = actx.createScriptProcessor(4096, 1, 1);
+            var chunks = [];
+            proc.onaudioprocess = function(e){ chunks.push(new Float32Array(e.inputBuffer.getChannelData(0))); };
+            source.connect(proc); proc.connect(actx.destination);
+            setTimeout(function(){
+              try { proc.disconnect(); source.disconnect(); } catch (e) {}
+              stream.getTracks().forEach(function(t){ t.stop(); });
+              var merged = mergeChunks(chunks);
+              var small = downsample(merged, actx.sampleRate, 16000);
+              actx.close();
+              resolve(wavBase64(small, 16000));
+            }, seconds * 1000);
+          })
+          .catch(function(){ reject(new Error("Akses mikrofon ditolak — izinkan mikrofon untuk halaman ini, lalu coba lagi.")); });
+        });
+      }
+
+      function renderGemini(data){
+        var risiko = (data.risiko || "").toString();
+        var rl = risiko.toLowerCase();
+        var col = rl.indexOf("tinggi") >= 0 ? "var(--red)" : rl.indexOf("sedang") >= 0 ? "var(--orange)" : rl ? "var(--green)" : "var(--ink2)";
+        $("gemJenis").textContent = data.jenis_suara || "Suara tidak teridentifikasi";
+        var rEl = $("gemRisiko");
+        rEl.textContent = "Risiko " + (risiko || "—");
+        rEl.style.setProperty("--rc", col);
+        var ky = parseFloat(data.keyakinan);
+        $("gemKeyakinan").textContent = isNaN(ky) ? "—" : fmt(clamp(ky, 0, 100), 0) + "%";
+        $("gemPenjelasan").textContent = data.penjelasan || "—";
+        $("gemSaran").textContent = data.saran || "—";
+        gemResult.classList.add("on");
+      }
+
+      btnAnalyze.addEventListener("click", async function(){
+        if (analyzing) return;
+        geminiKey = keyInput.value.trim();
+        if (!geminiKey){
+          gemStatus.textContent = "Masukkan dulu kunci API Gemini pada kolom di atas — tanpa kunci, Gemini tidak bisa dipanggil. Meteran dB tetap bisa dipakai.";
+          gemStatus.className = "gem-status err";
+          keyInput.focus();
+          return;
+        }
+        analyzing = true;
+        btnAnalyze.disabled = true;
+        var oldLabel = btnAnalyze.textContent;
+        try {
+          btnAnalyze.textContent = "Mendengarkan… buatlah suara seperti biasa (5 detik)";
+          gemStatus.textContent = "Merekam cuplikan suara dari mikrofon selama 5 detik…";
+          gemStatus.className = "gem-status";
+          var audio64 = await captureClip(5);
+          btnAnalyze.textContent = "Mengirim ke Gemini…";
+          gemStatus.textContent = "Cuplikan terkirim — Gemini sedang mengenali jenis suaranya…";
+          var prompt = "Kamu analis kebisingan lingkungan. Dengarkan cuplikan audio 5 detik ini dari sebuah lingkungan tempat tinggal. " +
+            "Balas HANYA dengan JSON valid tanpa teks lain, dengan kunci: " +
+            "\"jenis_suara\" (string singkat Bahasa Indonesia, contoh: \"Knalpot motor brong\"), " +
+            "\"keyakinan\" (angka 0-100), " +
+            "\"risiko\" (salah satu: \"Rendah\", \"Sedang\", \"Tinggi\" — risiko bagi pendengaran dan kenyamanan bila suara seperti ini sering terdengar), " +
+            "\"penjelasan\" (1-2 kalimat Bahasa Indonesia sederhana tentang suara ini dan dampaknya), " +
+            "\"saran\" (1 kalimat Bahasa Indonesia: apa yang sebaiknya dilakukan pendengar). " +
+            "Bila suara tidak jelas, tulis jenis_suara \"Tidak teridentifikasi dengan jelas\" dengan keyakinan rendah. Jangan mengarang sumber suara yang tidak terdengar.";
+          var resp = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "x-goog-api-key": geminiKey },
+            body: JSON.stringify({
+              contents: [{ parts: [
+                { text: prompt },
+                { inline_data: { mime_type: "audio/wav", data: audio64 } }
+              ] }],
+              generationConfig: { temperature: 0.2, responseMimeType: "application/json" }
+            })
+          });
+          var payload = null;
+          try { payload = await resp.json(); } catch (e) {}
+          if (!resp.ok){
+            var gmsg = payload && payload.error && payload.error.message ? payload.error.message : "";
+            if (resp.status === 400 || resp.status === 401 || resp.status === 403)
+              throw new Error("Kunci ditolak oleh Google (HTTP " + resp.status + "). Periksa lagi kunci API Gemini-mu — pastikan disalin utuh dari Google AI Studio dan masih aktif." + (gmsg ? " Pesan Google: " + gmsg : ""));
+            throw new Error("Gemini menjawab dengan error HTTP " + resp.status + "." + (gmsg ? " " + gmsg : ""));
+          }
+          var parts = payload && payload.candidates && payload.candidates[0] && payload.candidates[0].content
+            ? payload.candidates[0].content.parts || [] : [];
+          var txt = "";
+          parts.forEach(function(p){ if (p.text) txt += p.text; });
+          var parsed = null;
+          try { parsed = JSON.parse(txt); }
+          catch (e) {
+            var m = txt.match(/\{[\s\S]*\}/);
+            if (m) { try { parsed = JSON.parse(m[0]); } catch (e2) {} }
+          }
+          if (!parsed) throw new Error("Jawaban Gemini tidak bisa dibaca. Coba analisis lagi — kadang cuplikan yang terlalu sepi sulit dikenali.");
+          renderGemini(parsed);
+          gemStatus.textContent = "Selesai — hasil analisis Gemini tampil di bawah. Ingat: ini penilaian jenis suara oleh AI, bukan pengukuran alat bersertifikat.";
+          gemStatus.className = "gem-status ok";
+        } catch (err) {
+          gemStatus.textContent = err && err.message ? err.message : "Analisis gagal. Periksa koneksi internet dan kunci API, lalu coba lagi.";
+          gemStatus.className = "gem-status err";
+        } finally {
+          analyzing = false;
+          btnAnalyze.disabled = false;
+          btnAnalyze.textContent = oldLabel;
+        }
+      });
+
+      window.addEventListener("resize", drawChart);
+      drawGauge(MIN_DB);
+      drawChart();
+    })();
+    </script>
+  </body>
+</html>
