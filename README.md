@@ -19,7 +19,7 @@ Noise pollution is an everyday health problem: loud motorcycle exhausts, constru
 
 - The microphone signal is measured in the browser and converted to an estimated dB level. A calibration slider is included.
 - Verdict bands follow NIOSH exposure guidance and Indonesia's Kepmen LH No. 48/1996 noise quality standards.
-- Sound classification uses the Gemini API (`gemini-2.5-flash`): a short audio clip is sent directly from your browser to Google, and the answer comes back in Indonesian.
+- Sound classification uses the Gemini API (newest available Flash model, auto-selected): a short audio clip is sent directly from your browser to Google, and the answer comes back in Indonesian.
 
 ## Honesty note
 
@@ -36,7 +36,7 @@ A phone or laptop microphone is an estimate, not a certified sound level meter. 
 
 - Single-file HTML, CSS and JavaScript. No build step, no dependencies.
 - Web Audio API for live measurement.
-- Gemini API (`gemini-2.5-flash`) for audio classification.
+- Gemini API (newest available Flash model, auto-selected) for audio classification.
 
 ## Built for
 
